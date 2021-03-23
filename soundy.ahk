@@ -3,31 +3,34 @@
 SendMode Input  ; Recommended for new scripts due to its superior speed and reliability.
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 
+#Persistent
 #SingleInstance, force
 #Include includes\WinRun.ahk
 #Include includes\WebRequests.ahk
 #Include includes\JSON.ahk
-#Persistent
 
-APP_NAME   := "Soundy"
-VERSION    := "0.0.4"
-TAG_LINE   := "Distributed Soundboard"
-SOUNDS     := A_ScriptDir . "\Sounds\"
-CHECKINURL := "https://sb.dns.wtf/api/latest.json?id"
-SOUNDURL   := "https://sb.dns.wtf/api/latest.json?song"
-CURRENTIDURL   := "https://sb.dns.wtf/api/latest.json?start"
-UPDATEURL  := "https://sb.dns.wtf/api/update.json"
-LAST_ID    := readConfig("lastid", 0)
-SAFE_MODE  := readConfig("safemode", 1)
-MUTE_MODE  := readConfig("mutemode", 0)
-POOL_ID    := readConfig("poolid", 1)
-debug      := readConfig("debug", 0)
-NOTIFICATIONS := readConfig("notifications", 1)
+APP_NAME        := "Soundy"
+VERSION         := "0.0.5"
+TAG_LINE        := "Distributed Soundboard - Join the Party"
+SOUNDS          := A_ScriptDir . "\Sounds\"
+BASEDOMAIN      := "https://sb.dns.wtf/"
+CHECKINURL      := BASEDOMAIN . "api/latest.json?id"
+SOUNDURL        := BASEDOMAIN . "api/latest.json?song"
+CURRENTIDURL    := BASEDOMAIN . "api/latest.json?start"
+UPDATEURL       := BASEDOMAIN . "api/update.json"
+SWIMMERS        := BASEDOMAIN . "api/swimmers.json"
+LAST_ID         := readConfig("lastid", 0)
+SAFE_MODE       := readConfig("safemode", 0)
+MUTE_MODE       := readConfig("mutemode", 0)
+POOL_ID         := readConfig("poolid", 1)
+debug           := readConfig("debug", 0)
+NOTIFICATIONS   := readConfig("notifications", 1)
 CHECKFORUPDATES := readConfig("updates", 1)
-Logfile    := A_ScriptDir . "\runtime.log"
-IterationLimit = 120
-CURRENT_ID = 0
-RUNCOUNT = 0
+Logfile         := A_ScriptDir . "\runtime.log"
+IterationLimit   = 120
+CURRENT_ID       = 0
+RUNCOUNT         = 0
+HOSTNAME        := A_ComputerName
 
 Menu, SettingsMenu, Add, SFW Only, ToggleSFW
 Menu, SettingsMenu, Add, Mute, ToggleMute
@@ -38,10 +41,9 @@ Menu, SettingsMenu, Add,
 Menu, SettingsMenu, Add, View Logs, Logs
 Menu, SettingsMenu, Add, Clear Logs,ClearLogs
 
-
 Menu, tray, NoStandard
 Menu, tray, add, %APP_NAME% %VERSION%, Reload
-;Menu, tray, add, About,About
+Menu, tray, add, About,About
 Menu, tray, add,
 Menu, tray, Add, Settings, :SettingsMenu
 Menu, tray, Add, Update Now, Update
@@ -50,6 +52,11 @@ Menu, tray, add,
 Menu, tray, add, Quit, Exit
 
 Menu, tray, tip, %APP_NAME% %VERSION% - %LAST_ID%
+
+; TODO: Create About Gui
+about_message := APP_NAME . " " . VERSION . "`n`r`n`rThis tool allows you to be part of the party`n`r`n`rMore information about this script can be found at: `n`r`n`r    https://github.com/smugzombie `n`r`n`ror by contacting us at: scripts@digdns.com."
+Gui 2: Add, GroupBox, x6 y6 w340 h180 , Copyright (C) 2021 Ron Egli
+Gui 2: Add, Edit, x16 y25 w320 h150 disabled, %about_message%
 
 if (SAFE_MODE == 1){
 	Menu, SettingsMenu, Check , SFW Only
@@ -79,6 +86,7 @@ DebugLogThis("Current Pool set to: " . POOL_ID)
 DebugLogThis("Current MUTE Setting: " . MUTE_MODE)
 DebugLogThis("Current SAFE Setting: " . SAFE_MODE)
 DebugLogThis("Current UPDATE Settings: " . CHECKFORUPDATES)
+DebugLogThis("Current Identifier: " . HOSTNAME)
 doStuff()
 
 return
@@ -121,13 +129,29 @@ doStuff(){
     }
     else{
     	DebugLogThis("Iteration: " + RUNCOUNT)
+		if (IntervalOf5(RUNCOUNT)){
+			fetchSwimmers()
+		}
     }
     getSong()
 }
 
+fetchSwimmers(){
+	global
+	
+	TEMPSWIMMERS := SWIMMERS . "?pool=" . POOL_ID
+	;DebugLogThis(TEMPSWIMMERS)
+	command := A_ScriptDir . "\includes\curl " . TEMPSWIMMERS . " -k -s"
+    CURRENT_SWIMMERS := CMDRun(command)
+
+	DebugLogThis(CURRENT_SWIMMERS)
+	CURRENT_SWIMMERS = 
+}
+
 getCurrentID(){
 	global
-	TEMPCURRENTIDURL := CURRENTIDURL . "&last_id=" . LAST_ID . "&pool=" . POOL_ID
+	TEMPCURRENTIDURL := CURRENTIDURL . "&last_id=" . LAST_ID . "&pool=" . POOL_ID . "&identifier=" . HOSTNAME . "&safemode=" . SAFE_MODE
+	;DebugLogThis(TEMPCURRENTIDURL)
     command := A_ScriptDir . "\includes\curl " . TEMPCURRENTIDURL . " -k -s"
     LAST_ID := CMDRun(command)
 
@@ -149,7 +173,7 @@ getSong(){
     }
     else{
 
-        TEMPCHECKINURL := CHECKINURL . "&last_id=" . LAST_ID . "&pool=" . POOL_ID
+        TEMPCHECKINURL := CHECKINURL . "&last_id=" . LAST_ID . "&pool=" . POOL_ID . "&safemode=" . SAFE_MODE . "&identifier=" . HOSTNAME
         ;DebugLogThis(TEMPCHECKINURL)
         command := A_ScriptDir . "\includes\curl " . TEMPCHECKINURL . " -k -s"
         lastSong := CMDRun(command)
@@ -181,7 +205,7 @@ getSongName(id){
         ;DebugLogThis("Updating Current ID to: " . CURRENT_ID)
         LogThis("New ID Found")
 
-        TEMPSOUNDURL := SOUNDURL . "&pool=" . POOL_ID . "&last_id=" . LAST_ID
+        TEMPSOUNDURL := SOUNDURL . "&pool=" . POOL_ID . "&last_id=" . LAST_ID . "&safemode=" . SAFE_MODE
         ;DebugLogThis(TEMPSOUNDURL)
         command := A_ScriptDir . "\includes\curl " . TEMPSOUNDURL . " -k -s"
         songName := CMDRun(command)
@@ -222,7 +246,7 @@ songExists(name){
 downloadSong(name){
     global
     ;msgbox % name
-    fileURL := "https://sb.dns.wtf/sounds/" . name
+    fileURL := BASEDOMAIN . "sounds/" . name
     filePath := SOUNDS . name
     ;msgbox % filePath
 
@@ -365,7 +389,7 @@ LogThis(string){
 	global
 	StringReplace,string,string,`r`n,,A
 	FormatTime, Time,, MM/dd/yy hh:mm:ss tt
-	logline = %Time% - %APP_NAME% - %string%
+	logline = %Time% - %APP_NAME%  %VERSION% - %string%
 	FileAppend, %logline%`n, %Logfile%
 }
 
@@ -435,4 +459,17 @@ openInNotepad(file_path){
 		return
 	}
 	Run Notepad.exe %file_path%
+}
+
+IntervalOf5(Number)
+{
+	Switch Mod(Number,5)
+	{
+		Case 0:
+			return true
+			; Send, x
+		Case 1:
+			return false
+			; Send, y
+	}
 }

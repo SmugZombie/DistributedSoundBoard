@@ -10,7 +10,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #Persistent
 
 APP_NAME   := "Soundy"
-VERSION    := "0.0.2"
+VERSION    := "0.0.3"
 TAG_LINE   := "Distributed Soundboard"
 SOUNDS     := A_ScriptDir . "\Sounds\"
 CHECKINURL := "https://sb.dns.wtf/api/latest.json?id"
@@ -20,7 +20,7 @@ LAST_ID    := readConfig("lastid", 0)
 SAFE_MODE  := readConfig("safemode", 1)
 MUTE_MODE  := readConfig("mutemode", 0)
 POOL_ID    := readConfig("poolid", 1)
-debug      := readConfig("debug", 1)
+debug      := readConfig("debug", 0)
 Logfile    := A_ScriptDir . "\runtime.log"
 IterationLimit = 120
 CURRENT_ID = 0

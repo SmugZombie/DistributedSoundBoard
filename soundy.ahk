@@ -10,7 +10,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #Include includes\JSON.ahk
 
 APP_NAME        := "Soundy"
-VERSION         := "0.0.5"
+VERSION         := "0.0.6"
 TAG_LINE        := "Distributed Soundboard - Join the Party"
 SOUNDS          := A_ScriptDir . "\Sounds\"
 BASEDOMAIN      := "https://sb.dns.wtf/"
@@ -23,7 +23,7 @@ LAST_ID         := readConfig("lastid", 0)
 SAFE_MODE       := readConfig("safemode", 0)
 MUTE_MODE       := readConfig("mutemode", 0)
 POOL_ID         := readConfig("poolid", 1)
-debug           := readConfig("debug", 0)
+debug           := readConfig("debugmode", 0)
 NOTIFICATIONS   := readConfig("notifications", 1)
 CHECKFORUPDATES := readConfig("updates", 1)
 Logfile         := A_ScriptDir . "\runtime.log"
@@ -302,6 +302,7 @@ readConfig(name, default=""){
 writeConfig(name, value){
 	global
 	RegWrite, REG_SZ, HKEY_CURRENT_USER\Software\%APP_NAME%, %name%, %value%
+	LogThis("Writing Registry: " . name . " Value: " . value)
 	return
 }
 
@@ -350,7 +351,8 @@ ToggleDebug:
 	}
 	DebugLogThis("Toggling debug Mode to: " . debug)
 
-	writeConfig("debug", debug)
+	writeConfig("debugmode", debug)
+	reload
 return
 
 ToggleUpdates:
@@ -395,7 +397,6 @@ LogThis(string){
 
 DebugLogThis(string){
 	global
-	debug := readConfig("debug", 1)
 	if(debug == 1){
 		LogThis("Debug: " string)
 	}

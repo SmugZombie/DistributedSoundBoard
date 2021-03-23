@@ -10,17 +10,20 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #Persistent
 
 APP_NAME   := "Soundy"
-VERSION    := "0.0.3"
+VERSION    := "0.0.4"
 TAG_LINE   := "Distributed Soundboard"
 SOUNDS     := A_ScriptDir . "\Sounds\"
 CHECKINURL := "https://sb.dns.wtf/api/latest.json?id"
 SOUNDURL   := "https://sb.dns.wtf/api/latest.json?song"
 CURRENTIDURL   := "https://sb.dns.wtf/api/latest.json?start"
+UPDATEURL  := "https://sb.dns.wtf/api/update.json"
 LAST_ID    := readConfig("lastid", 0)
 SAFE_MODE  := readConfig("safemode", 1)
 MUTE_MODE  := readConfig("mutemode", 0)
 POOL_ID    := readConfig("poolid", 1)
 debug      := readConfig("debug", 0)
+NOTIFICATIONS := readConfig("notifications", 1)
+CHECKFORUPDATES := readConfig("updates", 1)
 Logfile    := A_ScriptDir . "\runtime.log"
 IterationLimit = 120
 CURRENT_ID = 0
@@ -30,14 +33,19 @@ Menu, SettingsMenu, Add, SFW Only, ToggleSFW
 Menu, SettingsMenu, Add, Mute, ToggleMute
 Menu, SettingsMenu, Add, Debug, ToggleDebug
 Menu, SettingsMenu, Add, Update Pool, UpdatePool
+Menu, SettingsMenu, Add, Check For Updates, ToggleUpdates
+Menu, SettingsMenu, Add,
+Menu, SettingsMenu, Add, View Logs, Logs
+Menu, SettingsMenu, Add, Clear Logs,ClearLogs
+
 
 Menu, tray, NoStandard
 Menu, tray, add, %APP_NAME% %VERSION%, Reload
 ;Menu, tray, add, About,About
 Menu, tray, add,
 Menu, tray, Add, Settings, :SettingsMenu
-;Menu, tray, Add, Update Now, Update
-;Menu, Tray, Disable, Update Now
+Menu, tray, Add, Update Now, Update
+Menu, Tray, Disable, Update Now
 Menu, tray, add,
 Menu, tray, add, Quit, Exit
 
@@ -52,6 +60,9 @@ if (MUTE_MODE == 1){
 if (debug == 1){
 	Menu, SettingsMenu, Check, Debug
 }
+if (CHECKFORUPDATES == 1){
+	Menu, SettingsMenu, Check, Check For Updates
+}
 ;msgbox % "Last ID" . LAST_ID
 
 If ( !A_IsCompiled ) {
@@ -59,6 +70,7 @@ If ( !A_IsCompiled ) {
 	Menu, Tray, Icon, ricardo.ico
 }
 
+checkForUpdates()
 getCurrentID()
 ; Lets kick things off
 DebugLogThis("Started")
@@ -66,9 +78,33 @@ DebugLogThis("Current ID set to: " . LAST_ID)
 DebugLogThis("Current Pool set to: " . POOL_ID)
 DebugLogThis("Current MUTE Setting: " . MUTE_MODE)
 DebugLogThis("Current SAFE Setting: " . SAFE_MODE)
+DebugLogThis("Current UPDATE Settings: " . CHECKFORUPDATES)
 doStuff()
 
 return
+
+update:
+Run, https://github.com/SmugZombie/DistributedSoundBoard
+return
+
+checkForUpdates(){
+	global
+	if (CHECKFORUPDATES != 1){
+		return
+	}
+
+	command := A_ScriptDir . "\includes\curl " . UPDATEURL . " -k -s"
+	latestVersion := CMDRun(command)
+
+	Latest := VersionCompare(VERSION, latestVersion)
+
+	if (Latest == 2){
+		Notify("Update Available - v" . latestVersion)
+		Menu, Tray, Enable, Update Now
+	}
+
+	; Check for updates
+}
 
 EmptyMem(PID="Soundy"){
     pid:=(pid="Soundy") ? DllCall("GetCurrentProcessId") : pid
@@ -91,8 +127,8 @@ doStuff(){
 
 getCurrentID(){
 	global
-	CURRENTIDURL := CURRENTIDURL . "&last_id=" . LAST_ID . "&pool=" . POOL_ID
-    command := A_ScriptDir . "\includes\curl " . CURRENTIDURL . " -k -s"
+	TEMPCURRENTIDURL := CURRENTIDURL . "&last_id=" . LAST_ID . "&pool=" . POOL_ID
+    command := A_ScriptDir . "\includes\curl " . TEMPCURRENTIDURL . " -k -s"
     LAST_ID := CMDRun(command)
 
     StringReplace,LAST_ID,LAST_ID,`r`n,,A
@@ -112,8 +148,10 @@ getSong(){
         doStuff()
     }
     else{
-        CHECKINURL := CHECKINURL . "&last_id=" . LAST_ID . "&pool=" . POOL_ID
-        command := A_ScriptDir . "\includes\curl " . CHECKINURL . " -k -s"
+
+        TEMPCHECKINURL := CHECKINURL . "&last_id=" . LAST_ID . "&pool=" . POOL_ID
+        ;DebugLogThis(TEMPCHECKINURL)
+        command := A_ScriptDir . "\includes\curl " . TEMPCHECKINURL . " -k -s"
         lastSong := CMDRun(command)
 
         StringReplace,lastSong,lastSong,`r`n,,A
@@ -140,16 +178,25 @@ getSongName(id){
     }
     else{
         CURRENT_ID := id
-        DebugLogThis("Updating Current ID to: " . CURRENT_ID)
+        ;DebugLogThis("Updating Current ID to: " . CURRENT_ID)
         LogThis("New ID Found")
 
-        SOUNDURL := SOUNDURL . "&pool=" . POOL_ID
-        command := A_ScriptDir . "\includes\curl " . SOUNDURL . " -k -s"
+        TEMPSOUNDURL := SOUNDURL . "&pool=" . POOL_ID . "&last_id=" . LAST_ID
+        ;DebugLogThis(TEMPSOUNDURL)
+        command := A_ScriptDir . "\includes\curl " . TEMPSOUNDURL . " -k -s"
         songName := CMDRun(command)
 
         StringReplace,songName,songName,`r`n,,A
         StringReplace,songName,songName,`n,,A
         StringReplace,songName,songName,`r,,A
+
+        IfInString, songName, NSFW
+    	{
+    		if( SAFE_MODE == 1 ){
+    			LogThis("Safemode Saves the Day!")
+    			return
+    		}
+    	}
 
         ;msgbox % songName . "..."
 
@@ -282,6 +329,21 @@ ToggleDebug:
 	writeConfig("debug", debug)
 return
 
+ToggleUpdates:
+	if(CHECKFORUPDATES = 1)
+	{
+		CHECKFORUPDATES = 0
+		Menu, SettingsMenu, UnCheck, Check For Updates
+	}
+	Else
+	{
+		CHECKFORUPDATES = 1
+		Menu, SettingsMenu, Check, Check For Updates
+	}
+	writeConfig("checkforupdates", CHECKFORUPDATES)
+	;checkStartup()
+return
+
 Reload:
 reload
 
@@ -313,4 +375,64 @@ DebugLogThis(string){
 	if(debug == 1){
 		LogThis("Debug: " string)
 	}
+}
+
+VersionCompare(version1, version2)
+{
+	StringSplit, verA, version1, .
+	StringSplit, verB, version2, .
+	Loop, % (verA0> verB0 ? verA0 : verB0)
+	{
+		if (verA0 < A_Index)
+			verA%A_Index% := "0"
+		if (verB0 < A_Index)
+			verB%A_Index% := "0"
+		if (verA%A_Index% > verB%A_Index%)
+			return 1
+		if (verB%A_Index% > verA%A_Index%)
+			return 2
+	}
+	return 0
+}
+
+Notify(message){
+	global
+	if(NOTIFICATIONS != 1)
+	{ 
+		return 
+	}
+	goSub RemoveTrayTip
+	TrayTip, %APP_NAME%, %message%
+	SetTimer, RemoveTrayTip, 2500
+	return
+}
+
+About:
+Gui 2: -Resize -MinimizeBox -MaximizeBox
+Gui 2: Show, h190 w350, %APP_NAME% %version% - About
+return
+
+RemoveTrayTip:
+SetTimer, RemoveTrayTip, Off
+TrayTip
+return
+
+Logs:
+openInNotepad(Logfile)
+return
+
+ClearLogs:
+MsgBox, 4, , Are you sure you want to delete the logs? 
+IfMsgBox, Yes
+	FileDelete, %LogFile%
+return
+
+openInNotepad(file_path){
+	global
+	IfNotExist, %file_path%
+	{
+		msgbox,,%APP_NAME%, File Not Found
+		return
+	}
+	Run Notepad.exe %file_path%
 }

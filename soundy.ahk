@@ -10,7 +10,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #Include includes\JSON.ahk
 
 APP_NAME        := "Soundy"
-VERSION         := "0.0.6"
+VERSION         := "0.0.7"
 TAG_LINE        := "Distributed Soundboard - Join the Party"
 SOUNDS          := A_ScriptDir . "\Sounds\"
 BASEDOMAIN      := "https://sb.dns.wtf/"
@@ -45,6 +45,8 @@ Menu, tray, NoStandard
 Menu, tray, add, %APP_NAME% %VERSION%, Reload
 Menu, tray, add, About,About
 Menu, tray, add,
+Menu, tray, add, Swimmers, LaunchSwimmers
+Menu, tray, add,
 Menu, tray, Add, Settings, :SettingsMenu
 Menu, tray, Add, Update Now, Update
 Menu, Tray, Disable, Update Now
@@ -52,6 +54,23 @@ Menu, tray, add,
 Menu, tray, add, Quit, Exit
 
 Menu, tray, tip, %APP_NAME% %VERSION% - %LAST_ID%
+
+Gui, +OwnDialogs +owner -MaximizeBox -MinimizeBox +LastFound
+
+Gui, Add, ListView, -Multi -WantF2 -Grid +NoSortHdr +report -Background AltSubmit x9 vOutText r5 w400, Row|Swimmer Identifier|SafeMode
+;Gui, Add, DDL, vOutText y125 x90,  break||lunch|other
+;Gui, Font, c01DF01
+;Gui, Add, Text, y126 x9, I Wish to Go on: 
+;Gui, Font, Black
+;Gui, Add, DDL, vreason y125 x90,  break||lunch|other
+;Gui, Font, c01DF01
+;if(devmode = 1)
+;Gui, Add, Button, x360 y115 greload, Reload
+Gui, Add, StatusBar, vStatus, Ready - %HOSTNAME%
+
+LV_ModifyCol(1,45)
+LV_ModifyCol(2,275)
+LV_ModifyCol(3,75)
 
 ; TODO: Create About Gui
 about_message := APP_NAME . " " . VERSION . "`n`r`n`rThis tool allows you to be part of the party`n`r`n`rMore information about this script can be found at: `n`r`n`r    https://github.com/smugzombie `n`r`n`ror by contacting us at: scripts@digdns.com."
@@ -114,6 +133,10 @@ checkForUpdates(){
 	; Check for updates
 }
 
+LaunchSwimmers:
+	Gui, Show,, %APP_NAME% %VERSION%
+return
+
 EmptyMem(PID="Soundy"){
     pid:=(pid="Soundy") ? DllCall("GetCurrentProcessId") : pid
     h:=DllCall("OpenProcess", "UInt", 0x001F0FFF, "Int", 0, "Int", pid)
@@ -145,6 +168,24 @@ fetchSwimmers(){
     CURRENT_SWIMMERS := CMDRun(command)
 
 	DebugLogThis(CURRENT_SWIMMERS)
+	
+	;GuiControl,, OutText, %CURRENT_SWIMMERS%
+
+	LV_Delete()
+	;LV_Add(1,"1",CURRENT_SWIMMERS, "FALSE")
+
+	COUNT = 0
+	Loop, Parse, CURRENT_SWIMMERS, |
+	{
+		COUNT := COUNT + 1
+		StringSplit, UserArray, A_LoopField, :
+		{
+			SWIMMERID := UserArray1
+			SWIMMERSAFE := UserArray2
+			LV_Add(1,COUNT,SWIMMERID, SWIMMERSAFE)
+		}
+	}
+
 	CURRENT_SWIMMERS = 
 }
 

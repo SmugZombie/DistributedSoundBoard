@@ -10,7 +10,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #Include includes\JSON.ahk
 
 APP_NAME        := "Soundy"
-VERSION         := "0.0.7"
+VERSION         := "0.0.8"
 TAG_LINE        := "Distributed Soundboard - Join the Party"
 SOUNDS          := A_ScriptDir . "\Sounds\"
 BASEDOMAIN      := "https://sb.dns.wtf/"
@@ -27,7 +27,7 @@ debug           := readConfig("debugmode", 0)
 NOTIFICATIONS   := readConfig("notifications", 1)
 CHECKFORUPDATES := readConfig("updates", 1)
 Logfile         := A_ScriptDir . "\runtime.log"
-IterationLimit   = 120
+IterationLimit   = 100
 CURRENT_ID       = 0
 RUNCOUNT         = 0
 HOSTNAME        := A_ComputerName
@@ -57,7 +57,7 @@ Menu, tray, tip, %APP_NAME% %VERSION% - %LAST_ID%
 
 Gui, +OwnDialogs +owner -MaximizeBox -MinimizeBox +LastFound
 
-Gui, Add, ListView, -Multi -WantF2 -Grid +NoSortHdr +report -Background AltSubmit x9 vOutText r5 w400, Row|Swimmer Identifier|SafeMode
+Gui, Add, ListView, -Multi -WantF2 -Grid +NoSortHdr +report -Background AltSubmit x9 vOutText r5 w400, Row|Swimmer|SafeMode
 ;Gui, Add, DDL, vOutText y125 x90,  break||lunch|other
 ;Gui, Font, c01DF01
 ;Gui, Add, Text, y126 x9, I Wish to Go on: 
@@ -134,7 +134,7 @@ checkForUpdates(){
 }
 
 LaunchSwimmers:
-	Gui, Show,, %APP_NAME% %VERSION%
+	Gui, Show,, %APP_NAME% %VERSION% - Swimmers
 return
 
 EmptyMem(PID="Soundy"){
@@ -174,18 +174,28 @@ fetchSwimmers(){
 	LV_Delete()
 	;LV_Add(1,"1",CURRENT_SWIMMERS, "FALSE")
 
+	SWIMMERS_ARRAY := []
+
 	COUNT = 0
 	Loop, Parse, CURRENT_SWIMMERS, |
 	{
-		COUNT := COUNT + 1
 		StringSplit, UserArray, A_LoopField, :
 		{
 			SWIMMERID := UserArray1
 			SWIMMERSAFE := UserArray2
-			LV_Add(1,COUNT,SWIMMERID, SWIMMERSAFE)
+			if ( SWIMMERID != "" ){
+				if ( indexOf(SWIMMERS_ARRAY, SWIMMERID) ) {
+
+				}else{
+					SWIMMERS_ARRAY.Push(SWIMMERID)
+					COUNT := COUNT + 1
+					LV_Add(1,COUNT,SWIMMERID, SWIMMERSAFE)
+				}
+			}
 		}
 	}
 
+	SWIMMERS_ARRAY := []
 	CURRENT_SWIMMERS = 
 }
 
@@ -514,4 +524,14 @@ IntervalOf5(Number)
 			return false
 			; Send, y
 	}
+}
+
+indexOf(Arr, var, fromIndex:=1) {
+	for index, value in Arr {
+		if (index < fromIndex)
+			Continue
+		else if (value = var)
+			return index
+	}
+	return false
 }
